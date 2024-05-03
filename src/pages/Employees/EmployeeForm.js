@@ -62,7 +62,7 @@ export default function EmployeeForm(props) {
       setValues({
         ...recordForEdit,
       });
-  }, [recordForEdit, setValues]);
+  }, [recordForEdit]);
 
   return (
     <Form onSubmit={handleSubmit}>

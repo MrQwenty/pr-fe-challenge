@@ -21,6 +21,7 @@ import EditOutlinedIcon from "@material-ui/icons/EditOutlined";
 import CloseIcon from "@material-ui/icons/Close";
 import Notification from "../../components/Notification";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import SideMenu from "../../components/SideMenu";
 
 const useStyles = makeStyles((theme) => ({
   pageContent: {
@@ -44,13 +45,18 @@ const headCells = [
   { id: "actions", label: "Actions", disableSorting: true },
 ];
 
-export default function Employees() {
+export default function Employees({ selectedDepartment }) {
   const classes = useStyles();
   const [recordForEdit, setRecordForEdit] = useState(null);
   const [records, setRecords] = useState(employeeService.getAllEmployees());
+
   const [filterFn, setFilterFn] = useState({
     fn: (items) => {
-      return items;
+      if (selectedDepartment === "") return items;
+      else
+        return items.filter(
+          (x) => x.departmentId === parseInt(selectedDepartment)
+        );
     },
   });
   const [openPopup, setOpenPopup] = useState(false);
@@ -84,17 +90,20 @@ export default function Employees() {
   };
 
   const addOrEdit = (employee, resetForm) => {
-    if (employee.id === 0) employeeService.insertEmployee(employee);
-    else employeeService.updateEmployee(employee);
+    if (employee.id === 0) {
+      employeeService.insertEmployee(employee);
+    } else {
+      employeeService.updateEmployee(employee);
+    }
     resetForm();
     setRecordForEdit(null);
     setOpenPopup(false);
-    setRecords(employeeService.getAllEmployees());
     setNotify({
       isOpen: true,
       message: "Submitted Successfully",
       type: "success",
     });
+    setRecords(employeeService.getAllEmployees());
   };
 
   const openInPopup = (item) => {
