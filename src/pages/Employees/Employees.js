@@ -5,11 +5,16 @@ import PeopleOutlineTwoToneIcon from "@material-ui/icons/PeopleOutlineTwoTone";
 import {
   Paper,
   makeStyles,
+  Table,
   TableBody,
-  TableRow,
   TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Toolbar,
   InputAdornment,
+  Checkbox,
+  Typography,
 } from "@material-ui/core";
 import useTable from "../../components/useTable";
 import * as employeeService from "../../services/employeeService";
@@ -21,7 +26,6 @@ import EditOutlinedIcon from "@material-ui/icons/EditOutlined";
 import CloseIcon from "@material-ui/icons/Close";
 import Notification from "../../components/Notification";
 import ConfirmDialog from "../../components/ConfirmDialog";
-import SideMenu from "../../components/SideMenu";
 
 const useStyles = makeStyles((theme) => ({
   pageContent: {
@@ -35,9 +39,13 @@ const useStyles = makeStyles((theme) => ({
     position: "absolute",
     right: "10px",
   },
+  deleteButton: {
+    marginRight: theme.spacing(2),
+  },
 }));
 
 const headCells = [
+  { id: "", label: "" },
   { id: "fullName", label: "Employee Name" },
   { id: "email", label: "Email Address (Personal)" },
   { id: "mobile", label: "Mobile Number" },
@@ -49,6 +57,7 @@ export default function Employees({ selectedDepartment }) {
   const classes = useStyles();
   const [recordForEdit, setRecordForEdit] = useState(null);
   const [records, setRecords] = useState([]);
+  const [selected, setSelected] = useState([]);
   const [filterFn, setFilterFn] = useState({
     fn: (items) => {
       if (selectedDepartment === "") return items;
@@ -68,6 +77,7 @@ export default function Employees({ selectedDepartment }) {
     isOpen: false,
     title: "",
     subTitle: "",
+    onConfirm: () => {},
   });
 
   useEffect(() => {
@@ -127,18 +137,84 @@ export default function Employees({ selectedDepartment }) {
   };
 
   const onDelete = (id) => {
-    setConfirmDialog({
-      ...confirmDialog,
-      isOpen: false,
-    });
     employeeService.deleteEmployee(id);
-    setRecords(employeeService.getAllEmployees());
+    setRecords((prevRecords) =>
+      prevRecords.filter((record) => record.id !== id)
+    );
     setNotify({
       isOpen: true,
       message: "Deleted Successfully",
       type: "error",
     });
+    setConfirmDialog({
+      ...confirmDialog,
+      isOpen: false,
+    });
   };
+
+  const handleDelete = () => {
+    if (selected.length === 0) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "Are you sure you want to delete this record?",
+        subTitle: "You can't undo this operation",
+        onConfirm: () => {
+          onDelete(recordForEdit.id);
+          setConfirmDialog({
+            ...confirmDialog,
+            isOpen: false,
+          });
+        },
+      });
+    } else {
+      setConfirmDialog({
+        isOpen: true,
+        title: "Are you sure you want to delete the selected records?",
+        subTitle: "You can't undo this operation",
+        onConfirm: () => {
+          selected.forEach((id) => {
+            onDelete(id);
+          });
+          setSelected([]);
+          setConfirmDialog({
+            ...confirmDialog,
+            isOpen: false,
+          });
+        },
+      });
+    }
+  };
+
+  const handleSelectAllClick = (event) => {
+    if (event.target.checked) {
+      const newSelecteds = records.map((n) => n.id);
+      setSelected(newSelecteds);
+      return;
+    }
+    setSelected([]);
+  };
+
+  const handleCheckboxClick = (event, id) => {
+    const selectedIndex = selected.indexOf(id);
+    let newSelected = [];
+
+    if (selectedIndex === -1) {
+      newSelected = newSelected.concat(selected, id);
+    } else if (selectedIndex === 0) {
+      newSelected = newSelected.concat(selected.slice(1));
+    } else if (selectedIndex === selected.length - 1) {
+      newSelected = newSelected.concat(selected.slice(0, -1));
+    } else if (selectedIndex > 0) {
+      newSelected = newSelected.concat(
+        selected.slice(0, selectedIndex),
+        selected.slice(selectedIndex + 1)
+      );
+    }
+
+    setSelected(newSelected);
+  };
+
+  const isSelected = (id) => selected.indexOf(id) !== -1;
 
   const { TblContainer, TblHead, TblPagination, recordsAfterPagingAndSorting } =
     useTable(records, headCells, filterFn);
@@ -174,45 +250,91 @@ export default function Employees({ selectedDepartment }) {
               setRecordForEdit(null);
             }}
           />
+          {selected.length > 1 && (
+            <Controls.Button
+              text="Delete"
+              variant="outlined"
+              color="secondary"
+              startIcon={<CloseIcon />}
+              className={classes.deleteButton}
+              onClick={handleDelete}
+            />
+          )}
         </Toolbar>
-        <TblContainer>
-          <TblHead />
-          <TableBody>
-            {recordsAfterPagingAndSorting().map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.fullName}</TableCell>
-                <TableCell>{item.email}</TableCell>
-                <TableCell>{item.mobile}</TableCell>
-                <TableCell>{item.department}</TableCell>
-                <TableCell>
-                  <Controls.ActionButton
-                    color="primary"
-                    onClick={() => {
-                      openInPopup(item);
-                    }}
-                  >
-                    <EditOutlinedIcon fontSize="small" />
-                  </Controls.ActionButton>
-                  <Controls.ActionButton
-                    color="secondary"
-                    onClick={() => {
-                      setConfirmDialog({
-                        isOpen: true,
-                        title: "Are you sure you want to delete this record?",
-                        subTitle: "You can't undo this operation",
-                        onConfirm: () => {
-                          onDelete(item.id);
-                        },
-                      });
-                    }}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </Controls.ActionButton>
+        <TableContainer>
+          <Table>
+            <TblHead>
+              <TableRow>
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    indeterminate={
+                      selected.length > 0 && selected.length < records.length
+                    }
+                    checked={selected.length === records.length}
+                    onChange={handleSelectAllClick}
+                  />
                 </TableCell>
+                {headCells.map((headCell) => (
+                  <TableCell key={headCell.id}>{headCell.label}</TableCell>
+                ))}
               </TableRow>
-            ))}
-          </TableBody>
-        </TblContainer>
+            </TblHead>
+            <TableBody>
+              {recordsAfterPagingAndSorting().map((item) => {
+                const isItemSelected = isSelected(item.id);
+                const labelId = `enhanced-table-checkbox-${item.id}`;
+                return (
+                  <TableRow
+                    hover
+                    onClick={(event) => handleCheckboxClick(event, item.id)}
+                    role="checkbox"
+                    aria-checked={isItemSelected}
+                    tabIndex={-1}
+                    key={item.id}
+                    selected={isItemSelected}
+                  >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={isItemSelected}
+                        inputProps={{ "aria-labelledby": labelId }}
+                      />
+                    </TableCell>
+                    <TableCell>{item.fullName}</TableCell>
+                    <TableCell>{item.email}</TableCell>
+                    <TableCell>{item.mobile}</TableCell>
+                    <TableCell>{item.department}</TableCell>
+                    <TableCell>
+                      <Controls.ActionButton
+                        color="primary"
+                        onClick={() => {
+                          openInPopup(item);
+                        }}
+                      >
+                        <EditOutlinedIcon fontSize="small" />
+                      </Controls.ActionButton>
+                      <Controls.ActionButton
+                        color="secondary"
+                        onClick={() => {
+                          setConfirmDialog({
+                            isOpen: true,
+                            title:
+                              "Are you sure you want to delete this record?",
+                            subTitle: "You can't undo this operation",
+                            onConfirm: () => {
+                              onDelete(item.id);
+                            },
+                          });
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </Controls.ActionButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
         <TblPagination />
       </Paper>
       <Popup
