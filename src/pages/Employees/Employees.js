@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import EmployeeForm from "./EmployeeForm";
 import PageHeader from "../../components/PageHeader";
 import PeopleOutlineTwoToneIcon from "@material-ui/icons/PeopleOutlineTwoTone";
@@ -48,8 +48,7 @@ const headCells = [
 export default function Employees({ selectedDepartment }) {
   const classes = useStyles();
   const [recordForEdit, setRecordForEdit] = useState(null);
-  const [records, setRecords] = useState(employeeService.getAllEmployees());
-
+  const [records, setRecords] = useState([]);
   const [filterFn, setFilterFn] = useState({
     fn: (items) => {
       if (selectedDepartment === "") return items;
@@ -71,8 +70,23 @@ export default function Employees({ selectedDepartment }) {
     subTitle: "",
   });
 
-  const { TblContainer, TblHead, TblPagination, recordsAfterPagingAndSorting } =
-    useTable(records, headCells, filterFn);
+  useEffect(() => {
+    const employees = employeeService.getAllEmployees();
+    setRecords(employees);
+  }, []);
+
+  useEffect(() => {
+    setFilterFn((prevFilter) => ({
+      ...prevFilter,
+      fn: (items) => {
+        if (selectedDepartment === "") return items;
+        else
+          return items.filter(
+            (x) => x.departmentId === parseInt(selectedDepartment)
+          );
+      },
+    }));
+  }, [selectedDepartment]);
 
   const handleSearch = (e) => {
     let target = e.target;
@@ -103,7 +117,8 @@ export default function Employees({ selectedDepartment }) {
       message: "Submitted Successfully",
       type: "success",
     });
-    setRecords(employeeService.getAllEmployees());
+    const employees = employeeService.getAllEmployees();
+    setRecords(employees);
   };
 
   const openInPopup = (item) => {
@@ -124,6 +139,9 @@ export default function Employees({ selectedDepartment }) {
       type: "error",
     });
   };
+
+  const { TblContainer, TblHead, TblPagination, recordsAfterPagingAndSorting } =
+    useTable(records, headCells, filterFn);
 
   return (
     <>
